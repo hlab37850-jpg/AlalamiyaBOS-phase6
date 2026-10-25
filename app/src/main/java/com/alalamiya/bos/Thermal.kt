@@ -60,7 +60,10 @@ object Thermal {
         blocks.add(null to 8)
         for (r in spec.rows) {
             blocks.add(lay(r.getOrElse(0) { "" }, bold, Layout.Alignment.ALIGN_NORMAL) to 0)
-            blocks.add(lay("${r.getOrElse(1) { "" }} × ${r.getOrElse(2) { "" }} = ${r.getOrElse(3) { "" }}", normal, Layout.Alignment.ALIGN_NORMAL) to 6)
+            val q = r.getOrElse(1) { "" }
+            val pr = r.getOrElse(2) { "" }
+            val tt = r.getOrElse(3) { "" }
+            blocks.add(lay(if (q.isBlank() && pr.isBlank()) tt else "$q × $pr = $tt", normal, Layout.Alignment.ALIGN_NORMAL) to 6)
         }
         blocks.add(null to 8)
         spec.footer.forEach { blocks.add(lay(it, bold, Layout.Alignment.ALIGN_NORMAL) to 4) }

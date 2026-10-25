@@ -75,13 +75,13 @@ fun AppRoot(db: BosDatabase) {
         val back = { dest = if (dest == Dest.STATEMENT) Dest.CUSTOMERS else Dest.HOME }
         BackHandler(enabled = dest != Dest.HOME) { back() }
         Scaffold(
-            topBar = { GradientBar(dest.title, if (dest == Dest.HOME) null else back) }
+            topBar = { if (dest != Dest.SALES && dest != Dest.PURCHASES) GradientBar(dest.title, if (dest == Dest.HOME) null else back) }
         ) { pad ->
             Box(Modifier.padding(pad).fillMaxSize()) {
                 when (dest) {
                     Dest.HOME -> HomeScreen(db) { dest = it }
-                    Dest.SALES -> InvoicesScreen(db, "sales")
-                    Dest.PURCHASES -> InvoicesScreen(db, "purchases")
+                    Dest.SALES -> InvoicesScreen(db, "sales") { dest = Dest.HOME }
+                    Dest.PURCHASES -> InvoicesScreen(db, "purchases") { dest = Dest.HOME }
                     Dest.VOUCHERS -> VouchersScreen(db)
                     Dest.CUSTOMERS -> CustomersScreen(db) { statementId = it; dest = Dest.STATEMENT }
                     Dest.STATEMENT -> statementId?.let { StatementScreen(db, it) }

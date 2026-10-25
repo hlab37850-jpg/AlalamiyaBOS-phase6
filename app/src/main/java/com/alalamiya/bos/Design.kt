@@ -40,6 +40,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.sp
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -80,16 +84,23 @@ fun BosTheme(content: @Composable () -> Unit) {
     )
 }
 
+val BarBrush = Brush.horizontalGradient(listOf(Color(0xFF1B4F8F), Color(0xFF0A6FB0), Color(0xFF174D8B)))
+
 @Composable
 fun GradientBar(title: String, onBack: (() -> Unit)?) {
-    Box(Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(BosBlue, BosBlueDark)))) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-            if (onBack != null) {
-                IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "رجوع", tint = Color.White) }
-            } else {
-                Spacer(Modifier.width(12.dp))
+    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+        Box(Modifier.fillMaxWidth().background(BarBrush)) {
+            Row(Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                if (onBack != null) {
+                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "رجوع", tint = Color.White) }
+                } else {
+                    Spacer(Modifier.width(12.dp))
+                }
+                Text(
+                    title, Modifier.weight(1f).padding(horizontal = 8.dp), color = Color.White, fontSize = 18.sp,
+                    fontWeight = FontWeight.Medium, textAlign = TextAlign.Left, maxLines = 1
+                )
             }
-            Text(title, color = Color.White, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         }
     }
 }

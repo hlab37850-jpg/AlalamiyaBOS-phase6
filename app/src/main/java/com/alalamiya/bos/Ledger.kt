@@ -36,6 +36,9 @@ class Ledger(private val db: BosDatabase) {
         /** من الأساسية إلى عملة الفاتورة. */
         fun fromBase(x: Long, rate: Long): Long = mulDiv(x, 1000, rate)
 
+        /** نسبة مئوية (مخزنة ×1000، فـ 5% = 5000) من مبلغ. */
+        fun percentOf(base: Long, pctMilli: Long): Long = mulDiv(base, pctMilli, 100000)
+
         val INVOICE_TYPES = setOf("sale", "purchase", "sale_return", "purchase_return")
     }
 
@@ -88,18 +91,21 @@ class Ledger(private val db: BosDatabase) {
      */
     suspend fun postInvoice(
         type: String, partyId: Long?, lines: List<InvoiceLineInput>, paid: Long?, discount: Long,
-        note: String, warehouseId: Long, currency: String, rate: Long
+        tax: Long, fees: Long, note: String, warehouseId: Long, currency: String, rate: Long,
+        date: Long, cashCode: String
     ): Long {
         require(type in INVOICE_TYPES) { "نوع فاتورة غير معروف" }
         require(lines.isNotEmpty()) { "الفاتورة بلا أصناف" }
         require(lines.all { it.quantity > 0 && it.price >= 0 }) { "كمية أو سعر غير صالح" }
         require(rate > 0) { "سعر الصرف غير صالح" }
-        require(discount >= 0 && (paid == null || paid >= 0)) { "قيمة غير صالحة" }
+        require(discount >= 0 && tax >= 0 && fees >= 0 && (paid == null || paid >= 0)) { "قيمة غير صالحة" }
 
         val baseLines = lines.map { it.copy(price = convert(it.price, rate)) }
         val gross = baseLines.sumOf { lineTotal(it.quantity, it.price) }
         val disc = minOf(convert(discount, rate), gross)
-        val net = gross - disc
+        val taxBase = convert(tax, rate)
+        val feesBase = convert(fees, rate)
+        val net = gross - disc + taxBase + feesBase
         val paidBase = if (paid == null) net else minOf(convert(paid, rate), net)
         require(partyId != null || paidBase == net) { "الفاتورة الآجلة تحتاج اختيار عميل" }
 
@@ -108,8 +114,8 @@ class Ledger(private val db: BosDatabase) {
             val now = System.currentTimeMillis()
             val invId = db.invoices().insert(
                 Invoice(
-                    type = type, customerId = partyId, date = now, total = net, paid = paidBase, note = note,
-                    discount = disc, warehouseId = warehouseId, currency = currency, rate = rate
+                    type = type, customerId = partyId, date = date, total = net, paid = paidBase, note = note,
+                    discount = disc, warehouseId = warehouseId, currency = currency, rate = rate, tax = taxBase, fees = feesBase
                 )
             )
 
@@ -122,38 +128,53 @@ class Ledger(private val db: BosDatabase) {
                 changeStock(l.itemId, warehouseId, stockSign * l.quantity, if (type == "purchase") l.price else null)
             }
 
-            val cash = account("1100", "الصندوق", "asset")
-            val recv = account("1200", "العملاء", "asset")
-            val inv = account("1300", "المخزون", "asset")
-            val pay = account("2100", "الموردون", "liability")
-            val sales = account("4100", "المبيعات", "income")
-            val salesRet = account("4200", "مردودات المبيعات", "income")
-            val discGiven = account("4300", "خصم مسموح به", "income")
-            val discEarned = account("4400", "خصم مكتسب", "income")
-            val cogs = account("5100", "تكلفة البضاعة المباعة", "expense")
-
             val label = when (type) {
                 "sale" -> "فاتورة بيع"; "purchase" -> "فاتورة شراء"
                 "sale_return" -> "مرتجع بيع"; else -> "مرتجع شراء"
             }
             val eid = db.journal().insertEntry(
-                JournalEntry(date = now, description = "$label #$invId" + (party?.let { " - ${it.name}" } ?: ""), refType = "invoice", refId = invId)
+                JournalEntry(date = date, description = "$label #$invId" + (party?.let { " - ${it.name}" } ?: ""), refType = "invoice", refId = invId)
             )
             val rest = net - paidBase
+            suspend fun put(code: String, name: String, kind: String, debit: Long, credit: Long) {
+                if (debit + credit > 0) line(eid, account(code, name, kind), debit, credit)
+            }
             when (type) {
                 "sale" -> {
-                    line(eid, cash, paidBase, 0); line(eid, recv, rest, 0); line(eid, discGiven, disc, 0); line(eid, sales, 0, gross)
-                    line(eid, cogs, cost, 0); line(eid, inv, 0, cost)
+                    put(cashCode, "الصندوق", "asset", paidBase, 0)
+                    put("1200", "العملاء", "asset", rest, 0)
+                    put("4300", "خصم مسموح به", "income", disc, 0)
+                    put("4100", "المبيعات", "income", 0, gross)
+                    put("2200", "ضريبة المبيعات المستحقة", "liability", 0, taxBase)
+                    put("4500", "رسوم وإيرادات أخرى", "income", 0, feesBase)
+                    put("5100", "تكلفة البضاعة المباعة", "expense", cost, 0)
+                    put("1300", "المخزون", "asset", 0, cost)
                 }
                 "sale_return" -> {
-                    line(eid, salesRet, gross, 0); line(eid, discGiven, 0, disc); line(eid, cash, 0, paidBase); line(eid, recv, 0, rest)
-                    line(eid, inv, cost, 0); line(eid, cogs, 0, cost)
+                    put("4200", "مردودات المبيعات", "income", gross, 0)
+                    put("2200", "ضريبة المبيعات المستحقة", "liability", taxBase, 0)
+                    put("4500", "رسوم وإيرادات أخرى", "income", feesBase, 0)
+                    put("4300", "خصم مسموح به", "income", 0, disc)
+                    put(cashCode, "الصندوق", "asset", 0, paidBase)
+                    put("1200", "العملاء", "asset", 0, rest)
+                    put("1300", "المخزون", "asset", cost, 0)
+                    put("5100", "تكلفة البضاعة المباعة", "expense", 0, cost)
                 }
                 "purchase" -> {
-                    line(eid, inv, gross, 0); line(eid, cash, 0, paidBase); line(eid, pay, 0, rest); line(eid, discEarned, 0, disc)
+                    put("1300", "المخزون", "asset", gross, 0)
+                    put("1400", "ضريبة المشتريات (مدخلات)", "asset", taxBase, 0)
+                    put("5300", "رسوم المشتريات", "expense", feesBase, 0)
+                    put(cashCode, "الصندوق", "asset", 0, paidBase)
+                    put("2100", "الموردون", "liability", 0, rest)
+                    put("4400", "خصم مكتسب", "income", 0, disc)
                 }
                 else -> { // purchase_return
-                    line(eid, cash, paidBase, 0); line(eid, pay, rest, 0); line(eid, discEarned, disc, 0); line(eid, inv, 0, gross)
+                    put(cashCode, "الصندوق", "asset", paidBase, 0)
+                    put("2100", "الموردون", "liability", rest, 0)
+                    put("4400", "خصم مكتسب", "income", disc, 0)
+                    put("1300", "المخزون", "asset", 0, gross)
+                    put("1400", "ضريبة المشتريات (مدخلات)", "asset", 0, taxBase)
+                    put("5300", "رسوم المشتريات", "expense", 0, feesBase)
                 }
             }
 

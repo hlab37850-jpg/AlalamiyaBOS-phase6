@@ -70,6 +70,12 @@ interface AccountDao {
     @Query("SELECT * FROM accounts WHERE code LIKE '6%' ORDER BY name")
     fun observeExpenseCategories(): Flow<List<Account>>
 
+    @Query("SELECT * FROM accounts WHERE code LIKE '11%' ORDER BY code")
+    fun observeCashAccounts(): Flow<List<Account>>
+
+    @Query("SELECT MAX(CAST(code AS INTEGER)) FROM accounts WHERE code LIKE '11%'")
+    suspend fun maxCashCode(): Int?
+
     @Insert suspend fun insert(a: Account): Long
 
     @Query("SELECT a.code AS code, a.name AS name, COALESCE(SUM(l.debit),0) AS debit, COALESCE(SUM(l.credit),0) AS credit FROM accounts a LEFT JOIN journal_lines l ON l.accountId = a.id GROUP BY a.id ORDER BY a.code")
@@ -104,6 +110,7 @@ interface InvoiceDao {
     @Insert suspend fun insertLine(l: InvoiceLine): Long
     @Query("SELECT * FROM invoice_lines WHERE invoiceId = :id") suspend fun lines(id: Long): List<InvoiceLine>
     @Query("SELECT * FROM invoices WHERE id = :id") suspend fun findById(id: Long): Invoice?
+    @Query("SELECT COALESCE(MAX(id), 0) + 1 FROM invoices") suspend fun nextNumber(): Long
     @Query("UPDATE invoices SET cancelled = 1 WHERE id = :id") suspend fun markCancelled(id: Long)
     @Query("SELECT * FROM invoices WHERE customerId = :cid") suspend fun forCustomer(cid: Long): List<Invoice>
     @Query("SELECT i.date AS date, i.type AS type, i.id AS invoiceId, l.quantity AS quantity, l.price AS price FROM invoice_lines l JOIN invoices i ON i.id = l.invoiceId WHERE l.itemId = :itemId AND i.cancelled = 0 ORDER BY i.date DESC")

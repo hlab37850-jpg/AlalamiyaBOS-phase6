@@ -77,7 +77,9 @@ data class Invoice(
     @ColumnInfo(defaultValue = "0") val discount: Long = 0,
     @ColumnInfo(defaultValue = "1") val warehouseId: Long = 1,
     @ColumnInfo(defaultValue = "'YER'") val currency: String = "YER",
-    @ColumnInfo(defaultValue = "1000") val rate: Long = 1000
+    @ColumnInfo(defaultValue = "1000") val rate: Long = 1000,
+    @ColumnInfo(defaultValue = "0") val tax: Long = 0,
+    @ColumnInfo(defaultValue = "0") val fees: Long = 0
 )
 
 @Entity(tableName = "invoice_lines", indices = [Index("invoiceId"), Index("itemId")])

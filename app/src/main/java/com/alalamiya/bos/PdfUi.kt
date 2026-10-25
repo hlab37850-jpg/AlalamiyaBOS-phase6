@@ -134,3 +134,28 @@ fun PdfPreview(file: File, spec: PdfSpec, onClose: () -> Unit) {
         }
     }
 }
+
+/** يفتح معاينة PDF عندما تصبح show = true (للأزرار الموجودة في أشرطة العنوان). */
+@Composable
+fun PdfPreviewHost(spec: PdfSpec, show: Boolean, onClose: () -> Unit) {
+    val ctx = LocalContext.current
+    var file by remember { mutableStateOf<File?>(null) }
+    LaunchedEffect(show) {
+        if (show) {
+            val f = withContext(Dispatchers.IO) {
+                try {
+                    File(ctx.cacheDir, "preview.pdf").also { out -> out.outputStream().use { PdfExport.write(ctx, it, spec) } }
+                } catch (e: Exception) { null }
+            }
+            if (f == null) {
+                Toast.makeText(ctx, "تعذّر إنشاء ملف PDF", Toast.LENGTH_SHORT).show()
+                onClose()
+            } else {
+                file = f
+            }
+        } else {
+            file = null
+        }
+    }
+    file?.let { PdfPreview(it, spec) { file = null; onClose() } }
+}
