@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.alalamiya.bos.data.BosDatabase
 import com.alalamiya.bos.data.Item
+import com.alalamiya.bos.data.ItemStock
 import com.alalamiya.bos.data.OperationLog
 import com.alalamiya.bos.ui.money
 import com.alalamiya.bos.ui.toMilli
@@ -153,7 +154,8 @@ fun ItemsScreen(db: BosDatabase) {
                     Toast.makeText(ctx, "يوجد صنف بنفس الاسم", Toast.LENGTH_SHORT).show()
                 } else {
                     withContext(Dispatchers.IO) {
-                        db.items().insert(item)
+                        val newId = db.items().insert(item)
+                        if (item.quantity != 0L) db.stock().upsert(ItemStock(newId, db.warehouses().defaultId() ?: 1L, item.quantity))
                         db.log().insert(OperationLog(action = "add_item", details = item.name))
                     }
                     creating = false

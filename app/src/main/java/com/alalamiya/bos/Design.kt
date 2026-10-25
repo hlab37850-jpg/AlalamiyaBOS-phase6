@@ -145,7 +145,7 @@ private fun MenuRow(label: String, onClick: () -> Unit) {
 }
 
 @Composable
-private fun HeaderStat(label: String, value: String, modifier: Modifier = Modifier) {
+internal fun HeaderStat(label: String, value: String, modifier: Modifier = Modifier) {
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         Text(value, color = Color.White, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         Text(label, color = Color(0xFFBBD7F7), style = MaterialTheme.typography.labelSmall)
@@ -185,11 +185,13 @@ fun HomeScreen(db: BosDatabase, go: (Dest) -> Unit) {
                 MenuRow("الأصناف والكميات") { go(Dest.ITEMS) }
                 MenuRow("حركة صنف") { go(Dest.MOVES) }
                 MenuRow("جرد المخزون وتسوية الفروقات") { go(Dest.COUNT) }
+                MenuRow("المستودعات والمناقلة") { go(Dest.WAREHOUSES) }
             }
             MenuSection("الحسابات", Icons.Filled.AccountBalance) {
                 MenuRow("العملاء والموردون وكشف الحساب") { go(Dest.CUSTOMERS) }
                 MenuRow("سندات القبض والصرف") { go(Dest.VOUCHERS) }
                 MenuRow("المستحقات ومواعيد السداد") { go(Dest.DUE) }
+                MenuRow("المصروفات") { go(Dest.EXPENSES) }
             }
             MenuSection("التقارير", Icons.Filled.BarChart) {
                 MenuRow("ميزان المراجعة") { go(Dest.TRIAL) }
@@ -198,6 +200,7 @@ fun HomeScreen(db: BosDatabase, go: (Dest) -> Unit) {
             }
             MenuSection("الإعدادات والأدوات", Icons.Filled.Settings) {
                 MenuRow("بيانات المنشأة وقفل التطبيق") { go(Dest.SETTINGS) }
+                MenuRow("العملات وأسعار الصرف") { go(Dest.CURRENCIES) }
                 MenuRow("النسخ الاحتياطي والاستيراد") { go(Dest.BACKUP) }
             }
         }

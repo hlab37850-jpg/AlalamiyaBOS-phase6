@@ -17,6 +17,15 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Switch
+import android.Manifest
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material3.FilterChip
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.LaunchedEffect
 import androidx.fragment.app.FragmentActivity
@@ -50,6 +59,11 @@ fun SettingsScreen() {
     var cur by remember { mutableStateOf("") }
     var auto by remember { mutableStateOf(Prefs.autoBackup(ctx)) }
     var bioOn by remember { mutableStateOf(Prefs.biometric(ctx)) }
+    var printerName by remember { mutableStateOf(Prefs.printerName(ctx)) }
+    var paper by remember { mutableIntStateOf(Prefs.paperMm(ctx)) }
+    var showPrinters by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val askBt = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok -> if (ok) showPrinters = true }
     var msg by remember { mutableStateOf<String?>(null) }
     val numPin = KeyboardOptions(keyboardType = KeyboardType.NumberPassword)
 
@@ -90,6 +104,34 @@ fun SettingsScreen() {
             Switch(checked = auto, onCheckedChange = { auto = it; Prefs.setAutoBackup(ctx, it); Background.setAutoBackup(ctx, it) })
         }
         Text("النسخ التلقائية تُحفظ داخل التطبيق وتُحذف عند إزالته، فصدّر نسخة خارج الجهاز بشكل دوري من «النسخ الاحتياطي».", style = MaterialTheme.typography.bodySmall)
+
+        Text("الطابعة الحرارية (بلوتوث)", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Text(if (printerName.isBlank()) "لم تُختر طابعة بعد. اقرن الطابعة من إعدادات بلوتوث الجهاز أولًا." else "الطابعة المختارة: $printerName", style = MaterialTheme.typography.bodySmall)
+        Button(onClick = {
+            if (Thermal.hasPermission(ctx)) showPrinters = true else askBt.launch(Manifest.permission.BLUETOOTH_CONNECT)
+        }) { Text("اختيار طابعة مقترنة") }
+        if (showPrinters) {
+            val devices = Thermal.pairedDevices(ctx)
+            if (devices.isEmpty()) Text("لا توجد أجهزة مقترنة.", style = MaterialTheme.typography.bodySmall)
+            devices.forEach { (n, a) ->
+                TextButton(onClick = { Prefs.setPrinter(ctx, n, a); printerName = n; showPrinters = false }) { Text(n) }
+            }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FilterChip(selected = paper < 80, onClick = { paper = 58; Prefs.setPaperMm(ctx, 58) }, label = { Text("ورق 58 مم") })
+            FilterChip(selected = paper >= 80, onClick = { paper = 80; Prefs.setPaperMm(ctx, 80) }, label = { Text("ورق 80 مم") })
+        }
+        Button(enabled = printerName.isNotBlank(), onClick = {
+            scope.launch {
+                val spec = PdfSpec(
+                    fileName = "", title = "اختبار الطباعة", subtitle = Prefs.header(ctx),
+                    headers = listOf("", "", "", ""), rows = listOf(listOf("صنف تجريبي", "2", "5", "10")),
+                    footer = listOf("الإجمالي: 10")
+                )
+                val m = withContext(Dispatchers.IO) { Thermal.print(ctx, spec) }
+                Toast.makeText(ctx, m, Toast.LENGTH_LONG).show()
+            }
+        }) { Text("طباعة تجريبية") }
 
         msg?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
     }

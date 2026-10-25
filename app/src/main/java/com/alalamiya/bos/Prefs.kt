@@ -35,6 +35,12 @@ object Prefs {
         return hash(salt, pin) == sp(ctx).getString("pin_hash", null)
     }
 
+    fun printerName(ctx: Context) = sp(ctx).getString("printer_name", "") ?: ""
+    fun printerAddress(ctx: Context) = sp(ctx).getString("printer_addr", "") ?: ""
+    fun setPrinter(ctx: Context, name: String, addr: String) { sp(ctx).edit().putString("printer_name", name).putString("printer_addr", addr).apply() }
+    fun paperMm(ctx: Context) = sp(ctx).getInt("paper_mm", 58)
+    fun setPaperMm(ctx: Context, mm: Int) { sp(ctx).edit().putInt("paper_mm", mm).apply() }
+
     fun biometric(ctx: Context) = sp(ctx).getBoolean("biometric", false)
     fun setBiometric(ctx: Context, on: Boolean) { sp(ctx).edit().putBoolean("biometric", on).apply() }
 

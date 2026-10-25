@@ -33,6 +33,9 @@ enum class Dest(val title: String) {
     ITEMS("الأصناف"),
     MOVES("حركة صنف"),
     COUNT("جرد المخزون"),
+    WAREHOUSES("المستودعات"),
+    CURRENCIES("العملات"),
+    EXPENSES("المصروفات"),
     DUE("المستحقات"),
     TRIAL("ميزان المراجعة"),
     PNL("الأرباح والخسائر"),
@@ -85,6 +88,9 @@ fun AppRoot(db: BosDatabase) {
                     Dest.ITEMS -> ItemsScreen(db)
                     Dest.MOVES -> MovementScreen(db)
                     Dest.COUNT -> StockCountScreen(db)
+                    Dest.WAREHOUSES -> WarehousesScreen(db)
+                    Dest.CURRENCIES -> CurrenciesScreen(db)
+                    Dest.EXPENSES -> ExpensesScreen(db)
                     Dest.DUE -> DueScreen(db) { statementId = it; dest = Dest.STATEMENT }
                     Dest.TRIAL -> TrialBalanceScreen(db)
                     Dest.PNL -> ProfitLossScreen(db)

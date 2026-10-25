@@ -11,7 +11,7 @@ import java.util.Locale
 
 /** النسخ الاحتياطي والاستعادة: الاستيراد الوحيد المسموح هو ملف قاعدة البيانات الذي أنشأه هذا التطبيق نفسه. */
 object Backup {
-    private val VERSIONS = 1..2   // الإصدار 1 يُرقّى تلقائيًا عند الفتح
+    private val VERSIONS = 1..3   // الإصدار 1 يُرقّى تلقائيًا عند الفتح
     private val REQUIRED = listOf(
         "customers", "items", "accounts", "journal_entries", "journal_lines",
         "invoices", "invoice_lines", "vouchers", "operation_log"

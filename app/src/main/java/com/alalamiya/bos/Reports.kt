@@ -94,6 +94,8 @@ private fun actionLabel(a: String): String = when {
     a == "invoice_purchase" -> "فاتورة شراء"
     a == "invoice_cancel" -> "إلغاء فاتورة"
     a == "stock_count" -> "جرد مخزون"
+    a == "stock_transfer" -> "مناقلة مخزون"
+    a == "expense" -> "مصروف"
     a == "edit_customer" -> "تعديل عميل"
     a == "edit_item" -> "تعديل صنف"
     a == "invoice_sale_return" -> "مرتجع بيع"

@@ -73,7 +73,11 @@ data class Invoice(
     val total: Long = 0,
     val paid: Long = 0,
     val note: String = "",
-    @ColumnInfo(defaultValue = "0") val cancelled: Boolean = false
+    @ColumnInfo(defaultValue = "0") val cancelled: Boolean = false,
+    @ColumnInfo(defaultValue = "0") val discount: Long = 0,
+    @ColumnInfo(defaultValue = "1") val warehouseId: Long = 1,
+    @ColumnInfo(defaultValue = "'YER'") val currency: String = "YER",
+    @ColumnInfo(defaultValue = "1000") val rate: Long = 1000
 )
 
 @Entity(tableName = "invoice_lines", indices = [Index("invoiceId"), Index("itemId")])
@@ -101,4 +105,28 @@ data class OperationLog(
     val ts: Long = System.currentTimeMillis(),
     val action: String,
     val details: String = ""
+)
+
+@Entity(tableName = "warehouses")
+data class Warehouse(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val name: String,
+    @ColumnInfo(defaultValue = "0") val isDefault: Boolean = false
+)
+
+/** مخزون الصنف في كل مستودع. مجموعه يساوي Item.quantity دائمًا. */
+@Entity(tableName = "item_stock", primaryKeys = ["itemId", "warehouseId"])
+data class ItemStock(
+    val itemId: Long,
+    val warehouseId: Long,
+    val quantity: Long
+)
+
+/** rate = كم وحدة من العملة الأساسية تساوي وحدة واحدة من هذه العملة (×1000). */
+@Entity(tableName = "currencies", indices = [Index(value = ["code"], unique = true)])
+data class Currency(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val code: String,
+    val name: String,
+    val rate: Long = 1000
 )
