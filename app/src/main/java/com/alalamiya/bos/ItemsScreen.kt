@@ -49,10 +49,11 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @Composable
-fun ItemDialog(initial: Item?, onDismiss: () -> Unit, onSave: (Item) -> Unit) {
+fun ItemDialog(db: BosDatabase, initial: Item?, onDismiss: () -> Unit, onSave: (Item) -> Unit) {
     var name by remember { mutableStateOf(initial?.name ?: "") }
     var unit by remember { mutableStateOf(initial?.unit ?: "") }
     var category by remember { mutableStateOf(initial?.category ?: "") }
+    var group by remember { mutableStateOf(initial?.groupName ?: "") }
     var barcode by remember { mutableStateOf(initial?.barcode ?: "") }
     var cost by remember { mutableStateOf(initial?.costPrice?.money() ?: "") }
     var sale by remember { mutableStateOf(initial?.salePrice?.money() ?: "") }
@@ -70,8 +71,9 @@ fun ItemDialog(initial: Item?, onDismiss: () -> Unit, onSave: (Item) -> Unit) {
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(name, { name = it }, label = { Text("اسم الصنف") })
-                OutlinedTextField(unit, { unit = it }, label = { Text("الوحدة") }, singleLine = true)
-                OutlinedTextField(category, { category = it }, label = { Text("التصنيف") }, singleLine = true)
+                LookupField(db, 2, "الوحدة الأساسية", unit) { unit = it }
+                LookupField(db, 0, "التصنيف", category) { category = it }
+                LookupField(db, 1, "مجموعة الصنف", group) { group = it }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     OutlinedTextField(barcode, { barcode = it }, label = { Text("الباركود") }, singleLine = true, modifier = Modifier.weight(1f))
                     TextButton(onClick = { scan.launch(ScanOptions().setPrompt("امسح الباركود")) }) { Text("مسح") }
@@ -89,10 +91,10 @@ fun ItemDialog(initial: Item?, onDismiss: () -> Unit, onSave: (Item) -> Unit) {
         confirmButton = {
             TextButton(enabled = valid, onClick = {
                 val item = initial?.copy(
-                    name = name.trim(), unit = unit.trim(), category = category.trim(), barcode = barcode.trim(),
+                    name = name.trim(), unit = unit.trim(), category = category.trim(), barcode = barcode.trim(), groupName = group.trim(),
                     costPrice = c ?: 0, salePrice = s ?: 0, minStock = m ?: 0
                 ) ?: Item(
-                    name = name.trim(), unit = unit.trim(), category = category.trim(), barcode = barcode.trim(),
+                    name = name.trim(), unit = unit.trim(), category = category.trim(), barcode = barcode.trim(), groupName = group.trim(),
                     costPrice = c ?: 0, salePrice = s ?: 0, minStock = m ?: 0, quantity = q ?: 0
                 )
                 onSave(item)
@@ -147,7 +149,7 @@ fun ItemsScreen(db: BosDatabase) {
     }
 
     if (creating) {
-        ItemDialog(null, { creating = false }) { item ->
+        ItemDialog(db, null, { creating = false }) { item ->
             scope.launch {
                 val dup = withContext(Dispatchers.IO) { db.items().findByName(item.name) != null }
                 if (dup) {
@@ -164,7 +166,7 @@ fun ItemsScreen(db: BosDatabase) {
         }
     }
     editing?.let { cur ->
-        ItemDialog(cur, { editing = null }) { item ->
+        ItemDialog(db, cur, { editing = null }) { item ->
             scope.launch {
                 withContext(Dispatchers.IO) {
                     db.items().update(item)

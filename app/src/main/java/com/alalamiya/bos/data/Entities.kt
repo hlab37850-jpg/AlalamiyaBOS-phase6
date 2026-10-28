@@ -19,7 +19,12 @@ data class Customer(
     val status: String = "active",
     val dueDate: Long? = null,
     val lastContactAt: Long? = null,
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    @ColumnInfo(defaultValue = "0") val kind: Int = 0,               // 0 عميل، 1 مورد
+    @ColumnInfo(defaultValue = "0") val debitLimit: Long = 0,        // أقصى مديونية (0 = بلا سقف)
+    @ColumnInfo(defaultValue = "0") val creditLimit: Long = 0,       // أقصى دائنية (0 = بلا سقف)
+    @ColumnInfo(defaultValue = "''") val vatNo: String = "",
+    @ColumnInfo(defaultValue = "''") val groupName: String = ""
 )
 
 @Entity(tableName = "items", indices = [Index("name"), Index("category")])
@@ -34,7 +39,8 @@ data class Item(
     val costPrice: Long = 0,
     val salePrice: Long = 0,
     val barcode: String = "",
-    val notes: String = ""
+    val notes: String = "",
+    @ColumnInfo(defaultValue = "''") val groupName: String = ""
 )
 
 @Entity(tableName = "accounts", indices = [Index("code", unique = true)])
@@ -88,7 +94,9 @@ data class InvoiceLine(
     val invoiceId: Long,
     val itemId: Long,
     val quantity: Long,
-    val price: Long
+    val price: Long,
+    @ColumnInfo(defaultValue = "1000") val factor: Long = 1000,   // عدد الوحدات الأساسية في وحدة السطر (×1000)
+    @ColumnInfo(defaultValue = "''") val unitName: String = ""
 )
 
 @Entity(tableName = "vouchers", indices = [Index("customerId"), Index("date")])
@@ -98,7 +106,8 @@ data class Voucher(
     val customerId: Long? = null,
     val amount: Long,
     val date: Long = System.currentTimeMillis(),
-    val note: String = ""
+    val note: String = "",
+    @ColumnInfo(defaultValue = "'1100'") val fundCode: String = "1100"
 )
 
 @Entity(tableName = "operation_log", indices = [Index("ts")])
@@ -131,4 +140,72 @@ data class Currency(
     val code: String,
     val name: String,
     val rate: Long = 1000
+)
+
+@Entity(tableName = "item_units", indices = [Index("itemId")])
+data class ItemUnit(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val itemId: Long,
+    val name: String,
+    val factor: Long,                         // كم وحدة أساسية في هذه الوحدة (×1000)
+    @ColumnInfo(defaultValue = "0") val price: Long = 0   // سعر بيع هذه الوحدة (0 = سعر الأساسية × المعامل)
+)
+
+/** قوائم بسيطة: 0 تصنيفات، 1 مجموعات الأصناف، 2 وحدات القياس. */
+@Entity(tableName = "lookups", indices = [Index("kind")])
+data class Lookup(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val kind: Int,
+    val name: String,
+    @ColumnInfo(defaultValue = "''") val code: String = ""
+)
+
+@Entity(tableName = "taxes")
+data class Tax(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val name: String,
+    val percent: Long,                        // ×1000 (5% = 5000)
+    @ColumnInfo(defaultValue = "0") val isDefault: Boolean = false
+)
+
+@Entity(tableName = "app_settings")
+data class AppSetting(@PrimaryKey val skey: String, val sval: String)
+
+@Entity(tableName = "voucher_lines", indices = [Index("voucherId")])
+data class VoucherLine(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val voucherId: Long,
+    val partyId: Long? = null,
+    val accountId: Long? = null,
+    val amount: Long,
+    @ColumnInfo(defaultValue = "''") val note: String = ""
+)
+
+/** أثر قيد أو سند على رصيد طرف (عميل/مورد)، لعكسه عند الحذف. */
+@Entity(tableName = "journal_party", indices = [Index("entryId")])
+data class JournalParty(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val entryId: Long,
+    val partyId: Long,
+    val delta: Long
+)
+
+/** عملية مخزنية: transfer / receipt / issue / adjust. */
+@Entity(tableName = "stock_moves")
+data class StockMove(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val type: String,
+    val date: Long,
+    val warehouseId: Long,
+    val toWarehouseId: Long? = null,
+    @ColumnInfo(defaultValue = "''") val remarks: String = ""
+)
+
+@Entity(tableName = "stock_move_lines", indices = [Index("moveId"), Index("itemId")])
+data class StockMoveLine(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val moveId: Long,
+    val itemId: Long,
+    val quantity: Long,                       // بالوحدة الأساسية؛ موجب = زيادة في التسوية
+    @ColumnInfo(defaultValue = "0") val cost: Long = 0
 )

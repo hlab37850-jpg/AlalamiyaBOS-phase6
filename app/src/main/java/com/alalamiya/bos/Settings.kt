@@ -48,7 +48,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun SettingsScreen() {
+fun SettingsScreen(go: (Dest) -> Unit = {}) {
     val ctx = LocalContext.current
     var name by remember { mutableStateOf(Prefs.storeName(ctx)) }
     var phone by remember { mutableStateOf(Prefs.storePhone(ctx)) }
@@ -68,6 +68,10 @@ fun SettingsScreen() {
     val numPin = KeyboardOptions(keyboardType = KeyboardType.NumberPassword)
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text("القوائم", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        listOf("التصنيفات" to Dest.CATEGORIES, "مجموعة الصنف" to Dest.GROUPS, "وحدات القياس" to Dest.UNITS, "الضريبة" to Dest.TAX).forEach { (t, d) ->
+            Button(onClick = { go(d) }, modifier = Modifier.fillMaxWidth()) { Text(t) }
+        }
         Text("بيانات المنشأة", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         Text("تظهر في رأس ملفات PDF والفواتير المطبوعة.", style = MaterialTheme.typography.bodySmall)
         OutlinedTextField(name, { name = it }, label = { Text("اسم المنشأة") }, singleLine = true, modifier = Modifier.fillMaxWidth())

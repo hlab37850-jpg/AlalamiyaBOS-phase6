@@ -189,29 +189,51 @@ fun HomeScreen(db: BosDatabase, go: (Dest) -> Unit) {
             }
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Tile("قبض / صرف", Icons.Filled.SwapHoriz) { go(Dest.VOUCHERS) }
-                Tile("الحسابات", Icons.Filled.AccountBalance) { go(Dest.CUSTOMERS) }
+                Tile("الحسابات", Icons.Filled.AccountBalance) { go(Dest.ACCOUNTS) }
             }
 
+            MenuSection("المبيعات والمشتريات", Icons.Filled.ShoppingCart) {
+                MenuRow("عروض الأسعار") { go(Dest.QUOTES) }
+                MenuRow("طلبات الشراء") { go(Dest.ORDERS) }
+            }
+            MenuSection("الحسابات والقيود", Icons.Filled.AccountBalance) {
+                MenuRow("الحسابات (عملاء، موردون، نقدية، مصروفات...)") { go(Dest.ACCOUNTS) }
+                MenuRow("سندات القبض والصرف") { go(Dest.VOUCHERS) }
+                MenuRow("القيد اليومي") { go(Dest.JOURNAL) }
+                MenuRow("القيد الافتتاحي") { go(Dest.OPENING) }
+                MenuRow("دليل الحسابات") { go(Dest.CHART) }
+                MenuRow("حركة الصندوق") { go(Dest.CASH) }
+                MenuRow("المصروفات") { go(Dest.EXPENSES) }
+                MenuRow("المستحقات ومواعيد السداد") { go(Dest.DUE) }
+                MenuRow("سقف الحساب") { go(Dest.LIMITS) }
+            }
             MenuSection("المخزون", Icons.Filled.Inventory2) {
                 MenuRow("الأصناف والكميات") { go(Dest.ITEMS) }
+                MenuRow("أسعار البيع") { go(Dest.PRICES) }
+                MenuRow("وحدات الصنف (كرتون...)") { go(Dest.ITEM_UNITS) }
+                MenuRow("العمليات المخزنية (تحويل، توريد، صرف، تسوية)") { go(Dest.STOCK_OPS) }
+                MenuRow("جرد مخزني") { go(Dest.COUNT) }
+                MenuRow("المستودعات") { go(Dest.WAREHOUSES) }
                 MenuRow("حركة صنف") { go(Dest.MOVES) }
-                MenuRow("جرد المخزون وتسوية الفروقات") { go(Dest.COUNT) }
-                MenuRow("المستودعات والمناقلة") { go(Dest.WAREHOUSES) }
             }
-            MenuSection("الحسابات", Icons.Filled.AccountBalance) {
-                MenuRow("العملاء والموردون وكشف الحساب") { go(Dest.CUSTOMERS) }
-                MenuRow("سندات القبض والصرف") { go(Dest.VOUCHERS) }
-                MenuRow("المستحقات ومواعيد السداد") { go(Dest.DUE) }
-                MenuRow("المصروفات") { go(Dest.EXPENSES) }
+            MenuSection("العملات", Icons.Filled.SwapHoriz) {
+                MenuRow("العملات وأسعار الصرف") { go(Dest.CURRENCIES) }
             }
             MenuSection("التقارير", Icons.Filled.BarChart) {
                 MenuRow("ميزان المراجعة") { go(Dest.TRIAL) }
                 MenuRow("الأرباح والخسائر") { go(Dest.PNL) }
+                MenuRow("المركز المالي") { go(Dest.BALANCE_SHEET) }
+                MenuRow("أرصدة العملاء") { go(Dest.BAL_CUSTOMERS) }
+                MenuRow("أرصدة الموردين") { go(Dest.BAL_SUPPLIERS) }
+                MenuRow("المخزون المتبقي") { go(Dest.STOCK_REMAINING) }
                 MenuRow("سجل العمليات") { go(Dest.LOG) }
             }
-            MenuSection("الإعدادات والأدوات", Icons.Filled.Settings) {
-                MenuRow("بيانات المنشأة وقفل التطبيق") { go(Dest.SETTINGS) }
-                MenuRow("العملات وأسعار الصرف") { go(Dest.CURRENCIES) }
+            MenuSection("الإعدادات", Icons.Filled.Settings) {
+                MenuRow("بيانات المنشأة والقفل والطباعة") { go(Dest.SETTINGS) }
+                MenuRow("التصنيفات") { go(Dest.CATEGORIES) }
+                MenuRow("مجموعة الصنف") { go(Dest.GROUPS) }
+                MenuRow("وحدات القياس") { go(Dest.UNITS) }
+                MenuRow("الضريبة") { go(Dest.TAX) }
                 MenuRow("النسخ الاحتياطي والاستيراد") { go(Dest.BACKUP) }
             }
         }

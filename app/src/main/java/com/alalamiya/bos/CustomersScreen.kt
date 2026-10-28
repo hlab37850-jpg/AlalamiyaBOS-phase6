@@ -16,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -49,6 +50,9 @@ fun CustomerDialog(initial: Customer?, onDismiss: () -> Unit, onSave: (Customer)
     var phone by remember { mutableStateOf(initial?.phone ?: "") }
     var address by remember { mutableStateOf(initial?.address ?: "") }
     var notes by remember { mutableStateOf(initial?.notes ?: "") }
+    var kind by remember { mutableStateOf(initial?.kind ?: 0) }
+    var vat by remember { mutableStateOf(initial?.vatNo ?: "") }
+    var group by remember { mutableStateOf(initial?.groupName ?: "") }
     var bal by remember { mutableStateOf("") }
     val balValue = bal.toMilli()
     AlertDialog(
@@ -60,6 +64,12 @@ fun CustomerDialog(initial: Customer?, onDismiss: () -> Unit, onSave: (Customer)
                 OutlinedTextField(phone, { phone = it }, label = { Text("الهاتف") }, singleLine = true)
                 OutlinedTextField(address, { address = it }, label = { Text("العنوان") }, singleLine = true)
                 OutlinedTextField(notes, { notes = it }, label = { Text("ملاحظات") })
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(selected = kind == 0, onClick = { kind = 0 }, label = { Text("عميل") })
+                    FilterChip(selected = kind == 1, onClick = { kind = 1 }, label = { Text("مورد") })
+                }
+                OutlinedTextField(vat, { vat = it }, label = { Text("الرقم الضريبي") }, singleLine = true)
+                OutlinedTextField(group, { group = it }, label = { Text("التصنيف") }, singleLine = true)
                 if (initial == null) {
                     OutlinedTextField(bal, { bal = it }, label = { Text("الرصيد الافتتاحي (موجب = عليه)") }, singleLine = true, isError = balValue == null)
                 }
@@ -67,8 +77,8 @@ fun CustomerDialog(initial: Customer?, onDismiss: () -> Unit, onSave: (Customer)
         },
         confirmButton = {
             TextButton(enabled = name.isNotBlank() && (initial != null || balValue != null), onClick = {
-                val c = initial?.copy(name = name.trim(), phone = phone.trim(), address = address.trim(), notes = notes.trim())
-                    ?: Customer(name = name.trim(), phone = phone.trim(), address = address.trim(), notes = notes.trim(), balance = balValue ?: 0)
+                val c = initial?.copy(name = name.trim(), phone = phone.trim(), address = address.trim(), notes = notes.trim(), kind = kind, vatNo = vat.trim(), groupName = group.trim())
+                    ?: Customer(name = name.trim(), phone = phone.trim(), address = address.trim(), notes = notes.trim(), balance = balValue ?: 0, kind = kind, vatNo = vat.trim(), groupName = group.trim())
                 onSave(c)
             }) { Text("حفظ") }
         },

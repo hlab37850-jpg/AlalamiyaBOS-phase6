@@ -245,60 +245,70 @@ fun ProfitLossScreen(db: BosDatabase) {
     }
 }
 
+private data class MvEntry(val date: Long, val label: String, val qty: Long)
+
 @Composable
 fun MovementScreen(db: BosDatabase) {
     val ctx = LocalContext.current
     val items by db.items().observeAll().collectAsStateWithLifecycle(emptyList())
     var query by remember { mutableStateOf("") }
     var item by remember { mutableStateOf<Item?>(null) }
-    var moves by remember { mutableStateOf<List<ItemMove>>(emptyList()) }
+    var entries by remember { mutableStateOf<List<MvEntry>>(emptyList()) }
     val fmt = remember { SimpleDateFormat("yyyy-MM-dd", Locale.US) }
     val matches = remember(query, items) {
-        if (query.isBlank()) emptyList() else items.filter { it.name.contains(query.trim()) }.take(6)
+        if (query.isBlank()) emptyList() else items.filter { it.name.contains(query.trim()) || it.barcode == query.trim() }.take(6)
     }
-    LaunchedEffect(item?.id) {
-        val cur = item
-        moves = if (cur == null) emptyList() else withContext(Dispatchers.IO) { db.invoices().movesFor(cur.id) }
+    val cur = item?.let { s -> items.firstOrNull { it.id == s.id } ?: s }
+    LaunchedEffect(cur?.id, cur?.quantity) {
+        val c = cur
+        entries = if (c == null) emptyList() else withContext(Dispatchers.IO) {
+            val inv = db.invoices().movesFor(c.id).map { m ->
+                val bq = Ledger.baseQty(m.quantity, m.factor)
+                MvEntry(m.date, "${typeLabel(m.type)} #${m.invoiceId}", if (m.type == "sale" || m.type == "purchase_return") -bq else bq)
+            }
+            val sm = db.stockMoves().movesForItem(c.id).filter { it.type != "transfer" }.map { m ->
+                MvEntry(m.date, moveTitle(m.type), if (m.type == "issue") -m.quantity else m.quantity)
+            }
+            (inv + sm).sortedBy { it.date }
+        }
     }
-    fun signed(m: ItemMove): Long = if (m.type == "sale" || m.type == "purchase_return") -m.quantity else m.quantity
-
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        val cur = item
         if (cur == null) {
             OutlinedTextField(query, { query = it }, label = { Text("ابحث عن صنف") }, singleLine = true, modifier = Modifier.fillMaxWidth())
             matches.forEach { m -> TextButton(onClick = { item = m }) { Text(m.name) } }
         } else {
             TextButton(onClick = { item = null; query = "" }) { Text("الصنف: ${cur.name} — تغيير") }
+            val opening = cur.quantity - entries.sumOf { it.qty }
+            var run = opening
+            val table = entries.map { e -> run += e.qty; e to run }
             Text("الكمية الحالية: ${cur.quantity.money()} ${cur.unit}", style = MaterialTheme.typography.titleSmall)
-            if (moves.isEmpty()) {
-                Text("لا توجد حركات فواتير لهذا الصنف")
-            } else {
-                Row(Modifier.fillMaxWidth().background(BosBlue).padding(8.dp)) {
-                    listOf("التاريخ" to 1.3f, "الحركة" to 1.7f, "الكمية" to 1f, "السعر" to 1f).forEach { (t, w) ->
-                        Text(t, Modifier.weight(w), color = Color.White, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
-                    }
+            Row(Modifier.fillMaxWidth().background(BarBrush).padding(8.dp)) {
+                listOf("التاريخ" to 1.3f, "البيان" to 2f, "وارد" to 0.9f, "صادر" to 0.9f, "الرصيد" to 1f).forEach { (t, w) ->
+                    Text(t, Modifier.weight(w), color = Color.White, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
                 }
-                moves.forEach { m ->
-                    val q = signed(m)
-                    Row(Modifier.fillMaxWidth().background(Color.White).padding(8.dp)) {
-                        Text(fmt.format(Date(m.date)), Modifier.weight(1.3f), style = MaterialTheme.typography.bodySmall)
-                        Text("${typeLabel(m.type)} #${m.invoiceId}", Modifier.weight(1.7f), style = MaterialTheme.typography.bodySmall)
-                        Text((if (q > 0) "+" else "") + q.money(), Modifier.weight(1f), style = MaterialTheme.typography.bodySmall, color = if (q < 0) Color(0xFFB3261E) else Color(0xFF2E7D32))
-                        Text(m.price.money(), Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
-                    }
-                }
-                PdfActions(
-                    PdfSpec(
-                        fileName = "item-movement-${cur.id}.pdf",
-                        title = "حركة صنف: ${cur.name}",
-                        subtitle = Prefs.header(ctx),
-                        headers = listOf("التاريخ", "الحركة", "الكمية", "السعر"),
-                        rows = moves.map { m -> listOf(fmt.format(Date(m.date)), "${typeLabel(m.type)} #${m.invoiceId}", signed(m).money(), m.price.money()) },
-                        footer = listOf("الكمية الحالية: ${cur.quantity.money()} ${cur.unit}"),
-                        weights = listOf(1.3f, 1.7f, 1f, 1f)
-                    )
-                )
             }
+            if (opening != 0L) Row(Modifier.fillMaxWidth().background(Color(0xFFE3F0FF)).padding(8.dp)) {
+                Text("", Modifier.weight(1.3f)); Text("رصيد سابق", Modifier.weight(2f), style = MaterialTheme.typography.bodySmall)
+                Text("", Modifier.weight(0.9f)); Text("", Modifier.weight(0.9f)); Text(opening.money(), Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
+            }
+            table.forEach { (e, r) ->
+                Row(Modifier.fillMaxWidth().background(Color.White).padding(8.dp)) {
+                    Text(fmt.format(Date(e.date)), Modifier.weight(1.3f), style = MaterialTheme.typography.bodySmall)
+                    Text(e.label, Modifier.weight(2f), style = MaterialTheme.typography.bodySmall)
+                    Text(if (e.qty > 0) e.qty.money() else "", Modifier.weight(0.9f), style = MaterialTheme.typography.bodySmall, color = Color(0xFF2E7D32))
+                    Text(if (e.qty < 0) (-e.qty).money() else "", Modifier.weight(0.9f), style = MaterialTheme.typography.bodySmall, color = Color(0xFFB3261E))
+                    Text(r.money(), Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
+                }
+            }
+            PdfActions(
+                PdfSpec(
+                    fileName = "item-movement-${cur.id}.pdf", title = "حركة صنف: ${cur.name}", subtitle = Prefs.header(ctx),
+                    headers = listOf("التاريخ", "البيان", "وارد", "صادر", "الرصيد"),
+                    rows = (if (opening != 0L) listOf(listOf("", "رصيد سابق", "", "", opening.money())) else emptyList()) +
+                        table.map { (e, r) -> listOf(fmt.format(Date(e.date)), e.label, if (e.qty > 0) e.qty.money() else "", if (e.qty < 0) (-e.qty).money() else "", r.money()) },
+                    footer = listOf("الكمية الحالية: ${cur.quantity.money()} ${cur.unit}"), weights = listOf(1.3f, 2f, 0.9f, 0.9f, 1f)
+                )
+            )
         }
     }
 }
